@@ -73,12 +73,11 @@ def get_user_settings():
             "useMoney": use_money
         }
         save_config(config)
-
+        result = config
         # 显示结果
         result_var.set(f"已保存配置:\nVar1: {var1}\n难度: {nandu}\n使用金钱: {'是' if use_money else '否'}")
 
         # 存储结果并关闭窗口
-        result = (var1, nandu - 1, use_money)
         root.after(1000, root.destroy)
 
     # 确认按钮
