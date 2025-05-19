@@ -103,27 +103,31 @@ class VisionProcess(metaclass=SingletonMeta):
         :return: 扩大后的图像（NumPy数组）
         """
         # 1. 将NumPy数组转为PIL图像
-        time.sleep(0.5)
-        img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+        try:
+            time.sleep(0.5)
+            img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
 
-        # 2. 原始尺寸
-        original_width, original_height = img.size
+            # 2. 原始尺寸
+            original_width, original_height = img.size
 
-        # 3. 新尺寸
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
+            # 3. 新尺寸
+            new_width = int(original_width * scale)
+            new_height = int(original_height * scale)
 
-        # 4. 创建黑色背景的新图像
-        expanded_img = Image.new("RGB", (new_width, new_height), (0, 0, 0))
+            # 4. 创建黑色背景的新图像
+            expanded_img = Image.new("RGB", (new_width, new_height), (0, 0, 0))
 
-        # 5. 计算居中位置并粘贴
-        paste_x = (new_width - original_width) // 2
-        paste_y = (new_height - original_height) // 2
-        expanded_img.paste(img, (paste_x, paste_y))
-        result = self.ocr.ocr(np.array(expanded_img), cls=True)
-        if result[0] is None or (":" not in result[0][0][1][0]):
-            logger.info(f"未找到当前运行时间")
-            return 0,0
-        minutes, seconds = map(int, result[0][0][1][0].split(':'))
-        return result[0][0][1][0],minutes * 60 + seconds
+            # 5. 计算居中位置并粘贴
+            paste_x = (new_width - original_width) // 2
+            paste_y = (new_height - original_height) // 2
+            expanded_img.paste(img, (paste_x, paste_y))
+            result = self.ocr.ocr(np.array(expanded_img), cls=True)
+            if result[0] is None or (":" not in result[0][0][1][0]):
+                logger.info(f"未找到当前运行时间")
+                return 0, 0
+            minutes, seconds = map(int, result[0][0][1][0].split(':'))
+            return result[0][0][1][0], minutes * 60 + seconds
+        except Exception as e:
+            logger.error(f"Error in get_current_time: {e}\n,{result}")
+            return 0, 0
 

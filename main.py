@@ -22,7 +22,7 @@ if __name__ == "__main__":
         print("程序已被用户终止")
 
     except Exception as e:
-        logger.critical(f"发生意外错误: {e}", exc_info=True)
+        logger.critical(f"发生意外错误: {e}:{e.__traceback__}", exc_info=True)
 
     finally:
         # 确保清理工作执行

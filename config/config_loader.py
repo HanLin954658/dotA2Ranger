@@ -2,7 +2,8 @@ import json
 import os
 
 # 配置文件路径
-CONFIG_FILE = "config.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 def load_config():
     """加载保存的配置"""

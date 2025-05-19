@@ -1,102 +1,89 @@
-import tkinter as tk
-from tkinter import ttk
+import sys
+from PyQt5 import QtCore, QtWidgets
 from config.config_loader import load_config, save_config
 
-def get_user_settings():
-    """显示GUI并返回用户设置"""
-    config = load_config()
 
-    # 默认值
-    default_var1 = config.get("Var1", "收起")
-    default_nandu = config.get("nandu", 6)
-    default_use_money = config.get("useMoney", 0)
+class ConfigDialog(QtWidgets.QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("配置")
+        self.setGeometry(0, 500, 300, 200)
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint)
+        self.setWindowOpacity(0.9)
+        self.result_config = None
+        self.init_ui()
+        self.load_last_config()
 
-    # 创建主窗口
-    root = tk.Tk()
-    root.title("变量选择器")
-    root.geometry("400x300")
-    root.resizable(False, False)
+    def init_ui(self):
+        layout = QtWidgets.QVBoxLayout()
 
-    # 创建框架
-    frame = ttk.Frame(root, padding="20")
-    frame.pack(fill=tk.BOTH, expand=True)
+        self.mode_box = QtWidgets.QComboBox()
+        self.mode_box.addItems(["开局", "重开", "难度", "收起"])
+        layout.addWidget(QtWidgets.QLabel("模式选择"))
+        layout.addWidget(self.mode_box)
 
-    # 变量存储
-    var1_var = tk.StringVar(value=default_var1)
-    nandu_var = tk.IntVar(value=default_nandu)
-    use_money_var = tk.BooleanVar(value=bool(default_use_money))
+        self.gold_checkbox = QtWidgets.QCheckBox("是否开启金币消耗")
+        layout.addWidget(self.gold_checkbox)
 
-    # Var1 选择
-    ttk.Label(frame, text="Var1:").grid(row=0, column=0, sticky=tk.W, pady=10)
-    var1_values = ["开局", "重开", "难度", "收起"]
-    var1_combo = ttk.Combobox(frame, textvariable=var1_var, values=var1_values, width=15)
-    var1_combo.grid(row=0, column=1, sticky=tk.W, pady=10)
+        layout.addWidget(QtWidgets.QLabel("难度"))
+        slider_layout = QtWidgets.QHBoxLayout()
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider.setMinimum(1)
+        self.slider.setMaximum(25)
+        self.slider.setValue(10)
+        self.slider_label = QtWidgets.QLabel(str(self.slider.value()))
+        self.slider.valueChanged.connect(lambda v: self.slider_label.setText(str(v)))
+        slider_layout.addWidget(self.slider)
+        slider_layout.addWidget(self.slider_label)
+        layout.addLayout(slider_layout)
 
-    # nandu 选择
-    ttk.Label(frame, text="难度 (0-9):").grid(row=1, column=0, sticky=tk.W, pady=10)
-    nandu_scale = ttk.Scale(frame, variable=nandu_var, from_=1, to=25, orient=tk.HORIZONTAL, length=200)
-    nandu_scale.grid(row=1, column=1, sticky=tk.W, pady=10)
-    nandu_value_label = ttk.Label(frame, text=str(default_nandu))
-    nandu_value_label.grid(row=1, column=2, padx=10)
+        confirm_btn = QtWidgets.QPushButton("确认")
+        confirm_btn.clicked.connect(self.on_confirm)
+        layout.addWidget(confirm_btn)
 
-    def update_nandu_label(event):
-        nandu_value_label.config(text=str(nandu_var.get()))
+        self.setLayout(layout)
 
-    nandu_scale.bind("<Motion>", update_nandu_label)
-    nandu_scale.bind("<ButtonRelease-1>", update_nandu_label)
+    def load_last_config(self):
+        conf = load_config()
+        if not conf:
+            return
+        mode = conf.get("mode", "开局")
+        if mode in [self.mode_box.itemText(i) for i in range(self.mode_box.count())]:
+            self.mode_box.setCurrentText(mode)
 
-    # useMoney 选择
-    ttk.Label(frame, text="使用金钱:").grid(row=2, column=0, sticky=tk.W, pady=10)
-    use_money_check = ttk.Checkbutton(frame, variable=use_money_var)
-    use_money_check.grid(row=2, column=1, sticky=tk.W, pady=10)
+        self.gold_checkbox.setChecked(conf.get("use_gold", False))
+        self.slider.setValue(conf.get("difficulty", 10))
 
-    # 结果
-    result_var = tk.StringVar()
-    result_label = ttk.Label(frame, textvariable=result_var, justify=tk.LEFT)
-    result_label.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=10)
-
-    # 返回值
-    result = None
-
-    # 确认按钮回调
-    def on_confirm():
-        nonlocal result
-        # 获取当前值
-        var1 = var1_var.get()
-        nandu = nandu_var.get()
-        use_money = use_money_var.get()
-
-        # 保存配置
-        config = {
-            "Var1": var1,
-            "nandu": nandu,
-            "useMoney": use_money
+    def on_confirm(self):
+        self.result_config = {
+            "mode": self.mode_box.currentText(),
+            "use_gold": self.gold_checkbox.isChecked(),
+            "difficulty": self.slider.value()
         }
-        save_config(config)
-        result = config
-        # 显示结果
-        result_var.set(f"已保存配置:\nVar1: {var1}\n难度: {nandu}\n使用金钱: {'是' if use_money else '否'}")
+        save_config(self.result_config)
+        self.accept()
 
-        # 存储结果并关闭窗口
-        root.after(1000, root.destroy)
 
-    # 确认按钮
-    confirm_btn = ttk.Button(frame, text="确认", command=on_confirm)
-    confirm_btn.grid(row=4, column=0, columnspan=2, pady=20)
+def get_user_config():
+    app = QtWidgets.QApplication(sys.argv)
+    dialog = ConfigDialog()
+    result = dialog.exec_()
 
-    # 窗口关闭时保存配置
-    def on_closing():
-        save_config({
-            "Var1": var1_var.get(),
-            "nandu": nandu_var.get(),
-            "useMoney": 1 if use_money_var.get() else 0
-        })
-        root.destroy()
+    # 确保程序完全退出
+    if result == QtWidgets.QDialog.Accepted:
+        config = dialog.result_config
+    else:
+        config = None
 
-    root.protocol("WM_DELETE_WINDOW", on_closing)
+    # 清理Qt应用
+    app.quit()
+    return config
 
-    # 运行主循环
-    root.mainloop()
 
-    # 返回结果
-    return result
+# if __name__ == "__main__":
+#     config = get_user_config()
+#     if config:
+#         print("用户配置:", config)
+#         # 在这里使用配置开始你的主逻辑
+#     else:
+#         print("用户取消了配置")
