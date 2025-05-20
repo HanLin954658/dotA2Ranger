@@ -28,7 +28,8 @@ class ItemManager:
         self.state_manager.wait_until_resumed()
         logger.info("Starting to use items")
 
-        while True:
+        for i in range(20):
+            self.km.press_key("f1")
             # Look for upgrade button
             x, y = self.vision.find_image(
                 "images/shengji.bmp", 1142, 931, 1372, 1064
@@ -47,6 +48,23 @@ class ItemManager:
                 self.km.move_and_click(898, 561, 2)
                 continue
 
+            # Look for jueze button
+            x, y = self.vision.find_image(
+                "images/jueze.bmp", 1142, 931, 1372, 1064
+            )
+            if x > 0:
+                self.km.move_and_click(x, y)
+                x_sm, y_sm, conf_sm = self.vision.find_text("生命值", 713, 371, 789, 563)
+                if x_sm > 0:
+                    self.km.move_and_click(x_sm, y_sm)
+                    continue
+                x_sm, y_sm, conf_sm = self.vision.find_text("生命值", 907, 368, 976, 567)
+                if x_sm > 0:
+                    self.km.move_and_click(x_sm, y_sm)
+                    continue
+
+                self.km.move_and_click(898, 561, 2)
+                continue
             # Look for shenhua button
             x, y = self.vision.find_image(
                 "images/shenhua.bmp", 1142, 931, 1372, 1064
@@ -72,24 +90,5 @@ class ItemManager:
             if x > 0:
                 self.km.move_and_click(x, y)
                 continue
-
-            # Look for jueze button
-            x, y = self.vision.find_image(
-                "images/jueze.bmp", 1142, 931, 1372, 1064
-            )
-            if x > 0:
-                self.km.move_and_click(x, y)
-                x_sm, y_sm, conf_sm = self.vision.find_text("生命值", 713,371 , 789,563)
-                if x_sm > 0:
-                    self.km.move_and_click(x_sm, y_sm)
-                    continue
-                x_sm, y_sm, conf_sm = self.vision.find_text("生命值", 907,368, 976,567)
-                if x_sm > 0:
-                    self.km.move_and_click(x_sm, y_sm)
-                    continue
-
-                self.km.move_and_click(898, 561, 2)
-                continue
-
             # All complete
             break

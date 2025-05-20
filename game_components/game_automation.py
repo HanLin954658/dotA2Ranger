@@ -8,6 +8,7 @@ import time
 from PyQt5.QtCore import QThread
 from loguru import logger
 
+from game_phases.game_archive import ArchiveProcess
 from game_phases.game_difficulty import DifficultyPhase
 from game_phases.game_restart import RestartPhase
 from game_phases.game_runtime import CollapsePhase
@@ -64,17 +65,18 @@ class GameAutomation:
         self.km_controller = KMController()
 
         logger.debug("初始化视觉处理器")
-        self.detection_service = VisionProcess()
+        self.vision = VisionProcess()
 
 
 
         # 初始化各个阶段实例
         logger.debug("初始化各个阶段类实例")
         self.phases = {
-            "开局": GameStartPhase(self.state_manager, self.km_controller, self.detection_service),
-            "收起": CollapsePhase(self.state_manager, self.km_controller, self.detection_service, self.config),
+            "开局": GameStartPhase(self.state_manager, self.km_controller, self.vision),
+            "收起": CollapsePhase(self.state_manager, self.km_controller, self.vision, self.config),
             "重开": RestartPhase(self.state_manager, self.km_controller),
-            "难度": DifficultyPhase(self.state_manager, self.km_controller, self.detection_service, self.config)
+            "难度": DifficultyPhase(self.state_manager, self.km_controller, self.vision, self.config),
+            "存档": ArchiveProcess(self.config,self.state_manager,self.vision,self.km_controller)
         }
 
         # 初始化键盘监听器用于控制

@@ -25,7 +25,7 @@ class VisionProcess(metaclass=SingletonMeta):
         self.ocr = PaddleOCR(use_angle_cls=True, lang="ch")
         logger.info("OCR引擎初始化完成")
 
-    def find_text(self, text, x1, y1, x2, y2, threshold=0.7):
+    def find_text(self, text, x1, y1, x2, y2, threshold=0.6):
         """
         在指定区域内查找文本
         :param text: 要查找的文本
@@ -48,7 +48,7 @@ class VisionProcess(metaclass=SingletonMeta):
             for box in line:
                 detected_text = box[1][0]
                 confidence = box[1][1]
-                if text in detected_text and confidence >= threshold:
+                if text in detected_text:# and confidence >= threshold:
                     # 计算文本中心坐标
                     coords = box[0]
                     center_x = (coords[0][0] + coords[1][0] + coords[2][0] + coords[3][0]) / 4 + x1
@@ -124,10 +124,10 @@ class VisionProcess(metaclass=SingletonMeta):
             result = self.ocr.ocr(np.array(expanded_img), cls=True)
             if result[0] is None or (":" not in result[0][0][1][0]):
                 logger.info(f"未找到当前运行时间")
-                return 0, 0
+                return 0, 60
             minutes, seconds = map(int, result[0][0][1][0].split(':'))
             return result[0][0][1][0], minutes * 60 + seconds
         except Exception as e:
             logger.error(f"Error in get_current_time: {e}\n,{result}")
-            return 0, 0
+            return 0, 60
 
