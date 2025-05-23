@@ -26,10 +26,21 @@ class ArchiveProcess:
         self.km.move_and_click(832,625)
         time.sleep(1)
         self.km.move_a_to_target_position(0,0,962,521)
-        time.sleep(120)
-        for  i in range(5):
-            for  j in range(2):
-                self.km.move_and_click(604+i*150,281+j*160)
-                time.sleep(1)
-        self.km.move_and_click(976,862  )
+        for i in range(50):
+            x, y, conf = self.vision.find_text("确定", 871, 847, 1051, 895)
+            time.sleep(6)
+            if x > 0:
+                result_list = self.vision.get_all_coordinates_and_text(497, 195, 1367, 733)
+                for result in result_list:
+                    if '铜币' in result[2]:
+                        self.km.move_and_click(result[0], result[1])
+                for result in result_list:
+                    if '阶' in result[2]:
+                        self.km.move_and_click(result[0], result[1])
+
+                self.km.move_and_click(x, y, 2)
+                break
+            time.sleep(3)
+
+
         self.km.press_key('F2',2)

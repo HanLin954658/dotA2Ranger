@@ -25,7 +25,7 @@ class VisionProcess(metaclass=SingletonMeta):
         self.ocr = PaddleOCR(use_angle_cls=True, lang="ch")
         logger.info("OCR引擎初始化完成")
 
-    def find_text(self, text, x1, y1, x2, y2, threshold=0.6):
+    def find_text(self, text, x1, y1, x2, y2, threshold=0.6,save=False):
         """
         在指定区域内查找文本
         :param text: 要查找的文本
@@ -42,6 +42,8 @@ class VisionProcess(metaclass=SingletonMeta):
         result = self.ocr.ocr(np.array(screenshot), cls=True)
         if result[0] is None:
             logger.info(f"未找到文本 {text}")
+            if save:
+                screenshot.save(f"temp/{text}{int(time.time())}.png")
             return -1, -1, 0
 
         for line in result:
@@ -54,11 +56,11 @@ class VisionProcess(metaclass=SingletonMeta):
                     center_x = (coords[0][0] + coords[1][0] + coords[2][0] + coords[3][0]) / 4 + x1
                     center_y = (coords[0][1] + coords[1][1] + coords[2][1] + coords[3][1]) / 4 + y1
                     logger.info(f"找到文本 {text}，中心坐标: ({center_x}, {center_y})，置信度: {confidence}")
-                    return center_x, center_y, confidence
-        logger.info(f"未找到符合条件的文本 {text}")
+                    return int(center_x), int(center_y), confidence
+        logger.info(f"未找到符合条件的文本 {text},找到的内容为：{result}")
         return -1, -1, 0
 
-    def find_image(self, template_path, x1, y1, x2, y2, threshold=0.8):
+    def find_image(self, template_path, x1, y1, x2, y2, threshold=0.8,save=False):
         """
         在指定区域内查找图像并返回中心坐标
         :param template_path: 模板图像的文件路径
@@ -131,3 +133,16 @@ class VisionProcess(metaclass=SingletonMeta):
             logger.error(f"Error in get_current_time: {e}\n,{result}")
             return 0, 60
 
+    def get_all_coordinates_and_text(self,x1, y1, x2, y2):
+        screenshot = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+        result = self.ocr.ocr(np.array(screenshot), cls=True)
+        output = []
+
+        for line in result[0]:
+            box, (text, _) = line
+            x_coords = [pt[0] for pt in box]
+            y_coords = [pt[1] for pt in box]
+            center_x = int(sum(x_coords) / 4) + x1  # 加上偏移量
+            center_y = int(sum(y_coords) / 4) + y1
+            output.append((center_x, center_y, text))
+        return output

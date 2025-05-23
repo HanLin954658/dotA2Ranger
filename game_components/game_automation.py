@@ -14,7 +14,6 @@ from game_phases.game_restart import RestartPhase
 from game_phases.game_runtime import CollapsePhase
 # 游戏自动化组件
 from game_phases.game_start import GameStartPhase
-from gui.user_settings_gui import get_user_config
 from utils.keyboard_listener import KeyboardListener
 from utils.km_controller import KMController
 # 配置和工具
@@ -47,14 +46,12 @@ class GameAutomation:
     管理核心组件初始化、主循环执行和资源清理
     """
 
-    def __init__(self):
+    def __init__(self, config=None):
         """初始化游戏自动化系统，加载配置并初始化各组件"""
         logger.info("===== 游戏自动化系统初始化 =====")
-        setup_logging()
-        logger.info("正在初始化游戏自动化系统...")
         # 加载配置
         logger.debug("加载配置文件")
-        self.config = get_user_config()
+        self.config = config if config else {}
         self._log_config()
 
         # 初始化核心组件
@@ -67,16 +64,14 @@ class GameAutomation:
         logger.debug("初始化视觉处理器")
         self.vision = VisionProcess()
 
-
-
         # 初始化各个阶段实例
         logger.debug("初始化各个阶段类实例")
         self.phases = {
             "开局": GameStartPhase(self.state_manager, self.km_controller, self.vision),
             "收起": CollapsePhase(self.state_manager, self.km_controller, self.vision, self.config),
-            "重开": RestartPhase(self.state_manager, self.km_controller),
+            "重开": RestartPhase(self.state_manager, self.km_controller,self.vision),
             "难度": DifficultyPhase(self.state_manager, self.km_controller, self.vision, self.config),
-            "存档": ArchiveProcess(self.config,self.state_manager,self.vision,self.km_controller)
+            "存档": ArchiveProcess(self.config, self.state_manager, self.vision, self.km_controller)
         }
 
         # 初始化键盘监听器用于控制
@@ -93,9 +88,9 @@ class GameAutomation:
         """记录当前加载的配置信息"""
         logger.info("===== 当前配置 =====")
         logger.info(f"配置内容: {self.config}")
-        logger.info(f"起始阶段: {self.config.get('mode')}")
+        logger.info(f"起始阶段: {self.config.get('mode', '开局')}")
         logger.info(f"难度级别: {self.config.get('difficulty', 10) - 1}")
-        logger.info(f"使用资源: {self.config.get('use_coin', True)}")
+        logger.info(f"使用资源: {self.config.get('use_gold', True)}")
         logger.info("===== 配置结束 =====")
 
     def main_loop(self):
@@ -104,22 +99,39 @@ class GameAutomation:
         self.state_manager.wait_until_resumed()
         logger.info("脚本已启动。按F11暂停/恢复。")
 
+        phases_order = ["难度", "开局", "收起", "存档", "重开"]  # 明确阶段顺序
+        starting_phase = self.config.get("mode", "开局")
+        initial_phases = phases_order.copy()  # 首次循环可能需要调整起始点
+        game_times = 0
         while True:
-            starting_phase = self.config.get("mode")
-            logger.debug(f"当前配置的起始阶段: {starting_phase}")
+            game_success = False  # 初始化，防止未定义错误
+            current_phases = phases_order  # 默认执行所有阶段
 
-            # 按照固定顺序执行各阶段
-            for phase_name in ["开局", "收起", "重开", "难度"]:
-                if not self.is_first_start or starting_phase == phase_name:
-                    logger.info(f"========主流程：开始执行 {phase_name} 阶段=======")
-                    if self.is_first_start:
-                        logger.info("========主流程：首次启动序列执行完毕=======")
-                        self.is_first_start = False
+            # 首次启动时，从配置的起始阶段开始执行后续阶段
+            if self.is_first_start:
+                try:
+                    start_idx = phases_order.index(starting_phase)
+                    current_phases = phases_order[start_idx:]
+                except ValueError:
+                    logger.error(f"配置的起始阶段'{starting_phase}'无效，使用默认顺序")
+                    self.is_first_start = False
+
+            logger.debug(f"当前执行阶段顺序: {current_phases}")
+            for phase_name in current_phases:
+                logger.info(f"========主流程：开始执行 {phase_name} 阶段=======")
+                if phase_name == "收起":
+                    game_success = self.phases[phase_name].execute()
+                elif phase_name == "存档" and game_success:
                     self.phases[phase_name].execute()
-                    logger.info(f"{phase_name} 阶段完成")
+                else:
+                    self.phases[phase_name].execute()
+                logger.info(f"{phase_name} 阶段完成")
 
-            # 防止CPU占用过高
-            time.sleep(0.1)
+            if self.is_first_start:
+                logger.info("========主流程：首次启动序列执行完毕=======")
+                self.is_first_start = False
+
+            time.sleep(0.1)  # 防止CPU占用过高
 
     def cleanup(self):
         """在程序退出前清理资源，确保所有线程和连接正常关闭"""
@@ -137,6 +149,7 @@ class GameAutomationWorker(QThread):
     def __init__(self, automation: GameAutomation):
         super().__init__()
         self.automation = automation
+
 
     def run(self):
         try:

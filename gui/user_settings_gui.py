@@ -7,8 +7,8 @@ class ConfigDialog(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("配置")
-        self.setGeometry(0, 500, 300, 200)
-        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint)
+        self.setGeometry(100, 100, 300, 200)
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowOpacity(0.9)
         self.result_config = None
         self.init_ui()
@@ -37,9 +37,14 @@ class ConfigDialog(QtWidgets.QDialog):
         slider_layout.addWidget(self.slider_label)
         layout.addLayout(slider_layout)
 
+        buttons_layout = QtWidgets.QHBoxLayout()
         confirm_btn = QtWidgets.QPushButton("确认")
         confirm_btn.clicked.connect(self.on_confirm)
-        layout.addWidget(confirm_btn)
+        cancel_btn = QtWidgets.QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)
+        buttons_layout.addWidget(confirm_btn)
+        buttons_layout.addWidget(cancel_btn)
+        layout.addLayout(buttons_layout)
 
         self.setLayout(layout)
 
@@ -64,26 +69,40 @@ class ConfigDialog(QtWidgets.QDialog):
         self.accept()
 
 
-def get_user_config():
-    app = QtWidgets.QApplication(sys.argv)
+def get_user_config(app=None):
+    """
+    获取用户配置
+
+    如果传入了app参数，则使用该应用程序实例
+    否则创建一个临时的应用程序实例
+    """
+    # 检查是否已有QApplication实例
+    need_app = app is None
+
+    if need_app:
+        app = QtWidgets.QApplication(sys.argv)
+
     dialog = ConfigDialog()
     result = dialog.exec_()
 
-    # 确保程序完全退出
     if result == QtWidgets.QDialog.Accepted:
         config = dialog.result_config
     else:
         config = None
 
-    # 清理Qt应用
-    app.quit()
+    # 只有当我们创建了临时应用时才退出
+    if need_app:
+        app.quit()
+
     return config
 
 
-# if __name__ == "__main__":
-#     config = get_user_config()
-#     if config:
-#         print("用户配置:", config)
-#         # 在这里使用配置开始你的主逻辑
-#     else:
-#         print("用户取消了配置")
+# 仅作为独立模块测试时运行
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    config = get_user_config(app)
+    if config:
+        print("用户配置:", config)
+    else:
+        print("用户取消了配置")
+    sys.exit(app.exec_())

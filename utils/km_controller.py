@@ -17,6 +17,7 @@ MOUSEEVENTF_LEFTUP = 0x0004
 MOUSEEVENTF_RIGHTDOWN = 0x0008
 MOUSEEVENTF_RIGHTUP = 0x0010
 MOUSEEVENTF_ABSOLUTE = 0x8000
+MOUSEEVENTF_WHEEL = 0x0800
 
 KEYEVENTF_KEYDOWN = 0x0000
 KEYEVENTF_KEYUP = 0x0002
@@ -93,7 +94,6 @@ class KMController:
                 self._mouse_click(x, y)
                 time.sleep(interval)
             time.sleep(0.5)
-            logger.success(f"点击操作成功: ({x}, {y}, {clicks}次, 间隔{interval}s)")
         except Exception as e:
             logger.error(f"点击操作异常: {str(e)}")
             raise
@@ -101,8 +101,9 @@ class KMController:
         self.move_a_to_target_position(93,935,884,457)
 
     def move_a_to_target_position(self,  x1: int, y1: int, x2: int, y2: int):
-        self.press_key('f1')
-        self.move_and_click(x1, y1)
+        self.press_key('f1',3)
+        if x1 !=0:
+            self.move_and_click(x1, y1)
         self.press_key('a')
         self.move_and_click(x2, y2)
 
@@ -115,7 +116,6 @@ class KMController:
             self._mouse_move(x, y)
             self._mouse_right_click(x, y)
             time.sleep(wait)
-            logger.success(f"右键点击 ({x}, {y}) 成功")
         except Exception as e:
             logger.error(f"右键点击异常: {str(e)}")
             raise
@@ -131,7 +131,6 @@ class KMController:
                 self._key_press(key_code)
                 time.sleep(interval)
             time.sleep(0.5)
-            logger.success(f"按键 {key} {presses} 次完成")
         except Exception as e:
             logger.error(f"按键操作异常: {str(e)}")
             raise
@@ -149,10 +148,16 @@ class KMController:
             self.move_and_click(bg_x, bg_y, 1, 1)
             time.sleep(1)
             self.press_key('d', 5, interval=1)
-            logger.success(f"地图跳转成功,坐标：({sm_x},{sm_y}), ({bg_x},{bg_y}))")
         except Exception as e:
             logger.error(f"地图跳转失败: {str(e)}")
             raise
+
+    def mouse_drag(self,x1,y1,x2,y2):
+        self._mouse_move(x1,y1)
+        self._mouse_down()
+        self._mouse_move(x2,y2)
+        self._mouse_up()
+
 
     def _mouse_move(self, x: int, y: int) -> None:
         x = int((x / self.screen_width) * 65535)
@@ -165,19 +170,15 @@ class KMController:
 
         self._send_input(input_move)
 
-    def _mouse_click(self, x: int, y: int) -> None:
-        self._mouse_move(x, y)
-        time.sleep(0.01)
+    def mouse_scroll(self,scroll_amount: int):
+        input_struct = INPUT(type=INPUT_MOUSE)
+        input_struct.union.mi.dwFlags = MOUSEEVENTF_WHEEL
+        input_struct.union.mi.mouseData = scroll_amount * 120  # WHEEL_DELTA=120是标准值
 
-        input_down = INPUT(type=INPUT_MOUSE)
-        input_down.union.mi.dwFlags = MOUSEEVENTF_LEFTDOWN
-        input_up = INPUT(type=INPUT_MOUSE)
-        input_up.union.mi.dwFlags = MOUSEEVENTF_LEFTUP
+        # 发送输入
+        self._send_input(input_struct)
 
-        self._send_input(input_down)
-        time.sleep(0.02)
-        self._send_input(input_up)
-
+        time.sleep(0.05)
     def _mouse_right_click(self, x: int, y: int) -> None:
         self._mouse_move(x, y)
         time.sleep(0.01)
@@ -202,7 +203,24 @@ class KMController:
 
     def _send_input(self, input_obj: INPUT) -> None:
         user32.SendInput(1, ctypes.byref(input_obj), ctypes.sizeof(INPUT))
+    def _mouse_down(self) -> None:
+        """模拟鼠标按下动作"""
+        input_down = INPUT(type=INPUT_MOUSE)
+        input_down.union.mi.dwFlags = MOUSEEVENTF_LEFTDOWN
+        self._send_input(input_down)
+        time.sleep(0.02)
 
+    def _mouse_up(self) -> None:
+        """模拟鼠标弹起动作"""
+        input_up = INPUT(type=INPUT_MOUSE)
+        input_up.union.mi.dwFlags = MOUSEEVENTF_LEFTUP
+        self._send_input(input_up)
+
+    def _mouse_click(self, x: int, y: int) -> None:
+        """完整的鼠标点击操作（移动+按下+弹起）"""
+        self._mouse_move(x, y)
+        self._mouse_down()
+        self._mouse_up()
     def _get_virtual_key_code(self, key: str) -> int:
         key_mapping = {
             # 字母
